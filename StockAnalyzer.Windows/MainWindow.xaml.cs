@@ -52,5 +52,6 @@ namespace StockAnalyzer.Windows
         {
             Application.Current.Shutdown();
         }
+
     }
 }
