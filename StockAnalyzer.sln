@@ -1,13 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.168
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockAnalyzer.Windows", "StockAnalyzer.Windows\StockAnalyzer.Windows.csproj", "{C8F01325-3AA2-4435-A55F-CF411820FB90}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StockAnalyzer.Core", "StockAnalyzer.Core\StockAnalyzer.Core.csproj", "{4571844D-AD38-44DA-B934-980858C5EB00}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockAnalyzer.Web", "StockAnalyzer.Web\StockAnalyzer.Web.csproj", "{06EC389B-57C9-4A20-B3B5-B88BE518D3BC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "StockData", "StockData", "{87DD72F3-A564-4FC4-9C8E-A41B946BA790}"
+	ProjectSection(SolutionItems) = preProject
+		StockData\CompanyData.csv = StockData\CompanyData.csv
+		StockData\StockPrices.csv = StockData\StockPrices.csv
+		StockData\StockPrices_Small.csv = StockData\StockPrices_Small.csv
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
