@@ -35,7 +35,7 @@ namespace StockAnalyzer.Core
 
         private async Task LoadCompanies()
         {
-            using (var stream = new StreamReader(File.OpenRead(@"C:\Code\StockData\CompanyData.csv")))
+            using (var stream = new StreamReader(File.OpenRead(@"D:\dev\StockAnalyzer\StockData\CompanyData.csv")))
             {
                 await stream.ReadLineAsync();
 
@@ -77,7 +77,7 @@ namespace StockAnalyzer.Core
             var prices = new List<StockPrice>();
 
             using (var stream =
-                new StreamReader(File.OpenRead(@"C:\Code\StockData\StockPrices_Small.csv")))
+                new StreamReader(File.OpenRead(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv")))
             {
                 await stream.ReadLineAsync(); // Skip headers
 
