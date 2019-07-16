@@ -30,11 +30,19 @@ namespace StockAnalyzer.Windows
             StockProgress.IsIndeterminate = true;
             #endregion
 
-            var loadLinesTask = Task.Run(() =>
+            var loadLinesTask = Task.Run(async () =>
             {
-                var lines = File.ReadAllLines(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv");
+                using (var stream = new StreamReader(File.OpenRead(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv")))
+                {
+                    var lines = new List<string>();
+                    string line;
+                    while ((line = await stream.ReadLineAsync()) != null)
+                    {
+                        lines.Add(line);
+                    }
 
-                return lines;
+                    return lines;
+                }
             });
 
             var processStocksTask = loadLinesTask.ContinueWith(t =>
