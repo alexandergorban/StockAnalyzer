@@ -79,9 +79,37 @@ namespace StockAnalyzer.Windows
 
                 #endregion
 
-                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
+                var loadedStocks = (await Task.WhenAll(tickerLoadingTasks)).SelectMany(stock => stock);
 
-                Stocks.ItemsSource = loadedStocks.SelectMany(stock => stock);
+                // The parallel execution using parallel extensions will block the calling thread until the parallel execution completes
+                Parallel.Invoke(new ParallelOptions() { MaxDegreeOfParallelism = 2 },
+                    () =>
+                    {
+                        Debug.WriteLine("Starting Operation 1");
+                        CalculateExpensiveComputation(loadedStocks);
+                        Debug.WriteLine("Completed Operation 1");
+                    },
+                    () =>
+                    {
+                        Debug.WriteLine("Starting Operation 2");
+                        CalculateExpensiveComputation(loadedStocks);
+                        Debug.WriteLine("Completed Operation 2");
+                    },
+                    () =>
+                    {
+                        Debug.WriteLine("Starting Operation 3");
+                        CalculateExpensiveComputation(loadedStocks);
+                        Debug.WriteLine("Completed Operation 3");
+                    },
+                    () =>
+                    {
+                        Debug.WriteLine("Starting Operation 4");
+                        CalculateExpensiveComputation(loadedStocks);
+                        Debug.WriteLine("Completed Operation 4");
+                    }
+                    );
+
+                Stocks.ItemsSource = loadedStocks;
             }
             catch (Exception exception)
             {
@@ -98,6 +126,28 @@ namespace StockAnalyzer.Windows
             StockProgress.Visibility = Visibility.Hidden;
 
             #endregion
+        }
+
+        Random random = new Random();
+
+        private decimal CalculateExpensiveComputation(IEnumerable<StockPrice> stocks)
+        {
+            Thread.Yield();
+
+            var computedValue = 0m;
+
+            foreach (var stock in stocks)
+            {
+                for (int i = 0; i < stocks.Count() - 2; i++)
+                {
+                    for (int a = 0; a < random.Next(50, 60); a++)
+                    {
+                        computedValue += stocks.ElementAt(i).Change + stocks.ElementAt(i + 1).Change;
+                    }
+                }
+            }
+
+            return computedValue;
         }
 
         public async Task<IEnumerable<StockPrice>> GetStockFor(string ticker)
