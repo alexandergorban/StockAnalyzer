@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Navigation;
 using Newtonsoft.Json;
 using StockAnalyzer.Core.Domain;
+using StockAnalyzer.Windows.Services;
 
 namespace StockAnalyzer.Windows
 {
@@ -44,60 +45,24 @@ namespace StockAnalyzer.Windows
 
             _cancellationTokenSource.Token.Register(() => { Notes.Text = "Cancellation requested"; });
 
-            var loadLinesTask = SearchForStocks(_cancellationTokenSource.Token);
-
-            var processStocksTask = loadLinesTask.ContinueWith(t =>
+            try
             {
-                var lines = t.Result;
-                var data = new List<StockPrice>();
+                var service = new StockService();
+                var data = await service.GetStockPricesFor(Ticker.Text, _cancellationTokenSource.Token);
 
-                foreach (var line in lines.Skip(1))
-                {
-                    var segments = line.Split(',');
-
-                    for (int i = 0; i < segments.Length; i++)
-                    {
-                        segments[i] = segments[i].Trim('\'', '"');
-                    }
-
-                    var price = new StockPrice
-                    {
-                        Ticker = segments[0],
-                        TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
-                        Volume = Convert.ToInt32(segments[6]),
-                        Change = Convert.ToDecimal(segments[7]),
-                        ChangePercent = Convert.ToDecimal(segments[8])
-                    };
-
-                    data.Add(price);
-                }
-
-                Dispatcher.Invoke(() =>
-                {
-                    Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
-                });
-            }, 
-                _cancellationTokenSource.Token, 
-                TaskContinuationOptions.OnlyOnRanToCompletion, 
-                TaskScheduler.Current);
-
-            loadLinesTask.ContinueWith(t =>
-                {
-                    Dispatcher.Invoke(() => { Notes.Text = t.Exception.InnerException.Message; });
-                }, TaskContinuationOptions.OnlyOnFaulted);
-
-            processStocksTask.ContinueWith(_ =>
+                Stocks.ItemsSource = data;
+            }
+            catch (Exception exception)
             {
-                Dispatcher.Invoke(() =>
-                {
-                    #region After stock data is loaded
+                Notes.Text = exception.Message;
+            }
 
-                    StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
-                    StockProgress.Visibility = Visibility.Hidden;
+            #region After stock data is loaded
 
-                    #endregion
-                });
-            });
+            StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
+            StockProgress.Visibility = Visibility.Hidden;
+
+            #endregion
         }
 
         private Task<List<string>> SearchForStocks(CancellationToken cancellationToken)
