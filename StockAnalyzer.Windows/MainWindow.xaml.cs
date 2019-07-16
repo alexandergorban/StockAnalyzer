@@ -28,10 +28,12 @@ namespace StockAnalyzer.Windows
         private async void Search_Click(object sender, RoutedEventArgs e)
         {
             #region Before loading stock data
+
             var watch = new Stopwatch();
             watch.Start();
             StockProgress.Visibility = Visibility.Visible;
             StockProgress.IsIndeterminate = true;
+
             #endregion
 
             if (_cancellationTokenSource != null)
@@ -42,13 +44,12 @@ namespace StockAnalyzer.Windows
             }
 
             _cancellationTokenSource = new CancellationTokenSource();
-
             _cancellationTokenSource.Token.Register(() => { Notes.Text = "Cancellation requested"; });
 
             try
             {
                 var tickers = Ticker.Text.Split(',', ' ');
-                var service = new StockService();
+                var service = new MockStockService();
                 var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
                 foreach (var ticker in tickers)
