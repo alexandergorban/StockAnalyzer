@@ -20,7 +20,7 @@ namespace StockAnalyzer.Windows
         {
             InitializeComponent();
         }
-        
+
         private async void Search_Click(object sender, RoutedEventArgs e)
         {
             #region Before loading stock data
@@ -75,9 +75,14 @@ namespace StockAnalyzer.Windows
                 {
                     Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
                 });
-            });
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-            await processStocksTask.ContinueWith(_ =>
+            loadLinesTask.ContinueWith(t =>
+                {
+                    Dispatcher.Invoke(() => { Notes.Text = t.Exception.InnerException.Message; });
+                }, TaskContinuationOptions.OnlyOnFaulted);
+
+            processStocksTask.ContinueWith(_ =>
             {
                 Dispatcher.Invoke(() =>
                 {
@@ -111,7 +116,7 @@ namespace StockAnalyzer.Windows
                 }
             }
         }
-                
+
         private void Hyperlink_OnRequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri));
