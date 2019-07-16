@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -49,18 +50,37 @@ namespace StockAnalyzer.Windows
             try
             {
                 var tickers = Ticker.Text.Split(',', ' ');
-                var service = new MockStockService();
+
+                var service = new StockService();
+
+                // List<T> is not thread safe consider using ConcurrentBag<T> instead
+                var stocks = new ConcurrentBag<StockPrice>();
+
                 var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
                 foreach (var ticker in tickers)
                 {
-                    var loadTask = service.GetStockPricesFor(ticker, _cancellationTokenSource.Token);
+                    var loadTask = service.GetStockPricesFor(ticker, _cancellationTokenSource.Token)
+                        .ContinueWith(t =>
+                        {
+                            foreach (var stock in t.Result.Take(5))
+                            {
+                                stocks.Add(stock);
+                            }
+
+                            Dispatcher.Invoke(() => { Stocks.ItemsSource = stocks.ToArray(); });
+
+                            return t.Result;
+                        });
 
                     tickerLoadingTasks.Add(loadTask);
                 }
 
-                var timeoutTask = Task.Delay(2000);
                 var allStocksLoadingTask = Task.WhenAll(tickerLoadingTasks);
+
+                #region Handling Timeout
+
+                var timeoutTask = Task.Delay(2000);
                 var completedTask = await Task.WhenAny(timeoutTask, allStocksLoadingTask);
 
                 if (completedTask == timeoutTask)
@@ -71,8 +91,9 @@ namespace StockAnalyzer.Windows
                     throw new Exception("Timeout!");
                 }
 
-                // SelectMany turns List<List<T>> into List<T>
-                Stocks.ItemsSource = allStocksLoadingTask.Result.SelectMany(stocks => stocks);
+                #endregion
+
+                await allStocksLoadingTask;
             }
             catch (Exception exception)
             {
