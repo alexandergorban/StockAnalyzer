@@ -1,6 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Web.Mvc;
 using StockAnalyzer.Core;
+using StockAnalyzer.Core.Domain;
 
 namespace StockAnalyzer.Web.Controllers
 {
@@ -13,30 +15,23 @@ namespace StockAnalyzer.Web.Controllers
             return View();
         }
 
-
-
-
-
         [Route("Stock/{ticker}")]
         public async Task<ActionResult> Stock(string ticker)
         {
-            if (string.IsNullOrWhiteSpace(ticker)) ticker = "MSFT";
-
-            ViewBag.Title = $"Stock Details for {ticker}";
-
-            var store = new DataStore();
-
-            var data = await store.LoadStocks();
+            var data = await GetStocks();
 
             return View(data[ticker]);
         }
 
+        public async Task<Dictionary<string, IEnumerable<StockPrice>>> GetStocks()
+        {
+            var store = new DataStore();
 
+            // In ASP.NET 4.5 setting ConfigureAwait(false) means using the current tasks thread to execute the continuation
+            // This only applies to traditional ASP.NET, not ASP.NET Core
+            var data = await store.LoadStocks().ConfigureAwait(false);
 
-
-
-
-
-
+            return data;
+        }
     }
 }

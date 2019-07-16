@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -106,6 +107,19 @@ namespace StockAnalyzer.Windows
             StockProgress.Visibility = Visibility.Hidden;
 
             #endregion
+
+            //var result = await GetStockFor(Ticker.Text);
+
+            //Notes.Text += $"Stocks loaded!{Environment.NewLine}";
+        }
+
+        public async Task<IEnumerable<StockPrice>> GetStockFor(string ticker)
+        {
+            var service = new StockService();
+            var stocks = await service.GetStockPricesFor(ticker, CancellationToken.None)
+                .ConfigureAwait(false);
+
+            return stocks.Take(5);
         }
 
         private Task<List<string>> SearchForStocks(CancellationToken cancellationToken)
