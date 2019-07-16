@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Navigation;
@@ -21,6 +22,8 @@ namespace StockAnalyzer.Windows
             InitializeComponent();
         }
 
+        private CancellationTokenSource _cancellationTokenSource = null;
+
         private async void Search_Click(object sender, RoutedEventArgs e)
         {
             #region Before loading stock data
@@ -30,20 +33,18 @@ namespace StockAnalyzer.Windows
             StockProgress.IsIndeterminate = true;
             #endregion
 
-            var loadLinesTask = Task.Run(async () =>
+            if (_cancellationTokenSource != null)
             {
-                using (var stream = new StreamReader(File.OpenRead(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv")))
-                {
-                    var lines = new List<string>();
-                    string line;
-                    while ((line = await stream.ReadLineAsync()) != null)
-                    {
-                        lines.Add(line);
-                    }
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource = null;
+                return;
+            }
 
-                    return lines;
-                }
-            });
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            _cancellationTokenSource.Token.Register(() => { Notes.Text = "Cancellation requested"; });
+
+            var loadLinesTask = SearchForStocks(_cancellationTokenSource.Token);
 
             var processStocksTask = loadLinesTask.ContinueWith(t =>
             {
@@ -75,7 +76,10 @@ namespace StockAnalyzer.Windows
                 {
                     Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
                 });
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+            }, 
+                _cancellationTokenSource.Token, 
+                TaskContinuationOptions.OnlyOnRanToCompletion, 
+                TaskScheduler.Current);
 
             loadLinesTask.ContinueWith(t =>
                 {
@@ -94,6 +98,28 @@ namespace StockAnalyzer.Windows
                     #endregion
                 });
             });
+        }
+
+        private Task<List<string>> SearchForStocks(CancellationToken cancellationToken)
+        {
+            var loadLinesTask = Task.Run(async () =>
+            {
+                var lines = new List<string>();
+
+                using (var stream = new StreamReader(File.OpenRead(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv")))
+                {
+                    string line;
+
+                    while ((line = await stream.ReadLineAsync()) != null)
+                    {
+                        lines.Add(line);
+                    }
+                }
+
+                return lines;
+            }, cancellationToken);
+
+            return loadLinesTask;
         }
 
         public async Task GetStocks()
