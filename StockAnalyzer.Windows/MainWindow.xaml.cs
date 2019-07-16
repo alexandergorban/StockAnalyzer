@@ -50,6 +50,8 @@ namespace StockAnalyzer.Windows
 
             try
             {
+                #region Load One or Many Tickers
+
                 var tickers = Ticker.Text.Split(',', ' ');
 
                 var service = new StockService();
@@ -69,36 +71,25 @@ namespace StockAnalyzer.Windows
                                 stocks.Add(stock);
                             }
 
-                            Dispatcher.Invoke(() => { Stocks.ItemsSource = stocks.ToArray(); });
-
                             return t.Result;
                         });
 
                     tickerLoadingTasks.Add(loadTask);
                 }
 
-                var allStocksLoadingTask = Task.WhenAll(tickerLoadingTasks);
-
-                #region Handling Timeout
-
-                var timeoutTask = Task.Delay(2000);
-                var completedTask = await Task.WhenAny(timeoutTask, allStocksLoadingTask);
-
-                if (completedTask == timeoutTask)
-                {
-                    _cancellationTokenSource.Cancel();
-                    _cancellationTokenSource = null;
-
-                    throw new Exception("Timeout!");
-                }
-
                 #endregion
 
-                await allStocksLoadingTask;
+                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
+
+                Stocks.ItemsSource = loadedStocks.SelectMany(stock => stock);
             }
             catch (Exception exception)
             {
                 Notes.Text = exception.Message;
+            }
+            finally
+            {
+                _cancellationTokenSource = null;
             }
 
             #region After stock data is loaded
@@ -107,10 +98,6 @@ namespace StockAnalyzer.Windows
             StockProgress.Visibility = Visibility.Hidden;
 
             #endregion
-
-            //var result = await GetStockFor(Ticker.Text);
-
-            //Notes.Text += $"Stocks loaded!{Environment.NewLine}";
         }
 
         public async Task<IEnumerable<StockPrice>> GetStockFor(string ticker)
