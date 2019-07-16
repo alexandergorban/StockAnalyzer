@@ -58,10 +58,20 @@ namespace StockAnalyzer.Windows
                     tickerLoadingTasks.Add(loadTask);
                 }
 
-                var allStocks = await Task.WhenAll(tickerLoadingTasks);
+                var timeoutTask = Task.Delay(2000);
+                var allStocksLoadingTask = Task.WhenAll(tickerLoadingTasks);
+                var completedTask = await Task.WhenAny(timeoutTask, allStocksLoadingTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    _cancellationTokenSource.Cancel();
+                    _cancellationTokenSource = null;
+
+                    throw new Exception("Timeout!");
+                }
 
                 // SelectMany turns List<List<T>> into List<T>
-                Stocks.ItemsSource = allStocks.SelectMany(stocks => stocks);
+                Stocks.ItemsSource = allStocksLoadingTask.Result.SelectMany(stocks => stocks);
             }
             catch (Exception exception)
             {
