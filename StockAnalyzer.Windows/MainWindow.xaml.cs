@@ -30,9 +30,16 @@ namespace StockAnalyzer.Windows
             StockProgress.IsIndeterminate = true;
             #endregion
 
-            await Task.Run(() =>
+            var loadLinesTask = Task.Run(() =>
             {
                 var lines = File.ReadAllLines(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv");
+
+                return lines;
+            });
+
+            var processStocksTask = loadLinesTask.ContinueWith(t =>
+            {
+                var lines = t.Result;
                 var data = new List<StockPrice>();
 
                 foreach (var line in lines.Skip(1))
@@ -62,10 +69,18 @@ namespace StockAnalyzer.Windows
                 });
             });
 
-            #region After stock data is loaded
-            StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
-            StockProgress.Visibility = Visibility.Hidden;
-            #endregion
+            await processStocksTask.ContinueWith(_ =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    #region After stock data is loaded
+
+                    StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
+                    StockProgress.Visibility = Visibility.Hidden;
+
+                    #endregion
+                });
+            });
         }
 
         public async Task GetStocks()
