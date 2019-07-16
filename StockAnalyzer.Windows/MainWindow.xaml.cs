@@ -47,10 +47,21 @@ namespace StockAnalyzer.Windows
 
             try
             {
+                var tickers = Ticker.Text.Split(',', ' ');
                 var service = new StockService();
-                var data = await service.GetStockPricesFor(Ticker.Text, _cancellationTokenSource.Token);
+                var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
-                Stocks.ItemsSource = data;
+                foreach (var ticker in tickers)
+                {
+                    var loadTask = service.GetStockPricesFor(ticker, _cancellationTokenSource.Token);
+
+                    tickerLoadingTasks.Add(loadTask);
+                }
+
+                var allStocks = await Task.WhenAll(tickerLoadingTasks);
+
+                // SelectMany turns List<List<T>> into List<T>
+                Stocks.ItemsSource = allStocks.SelectMany(stocks => stocks);
             }
             catch (Exception exception)
             {
