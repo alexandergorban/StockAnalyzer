@@ -56,9 +56,28 @@ namespace StockAnalyzer.Windows
 
             try
             {
-                await WorkInNotepad();
+                Debug.WriteLine("Starting");
+                await Task.Factory.StartNew(() =>
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        Thread.Sleep(1000);
+                        Debug.WriteLine("Completing 1");
+                    }, TaskCreationOptions.AttachedToParent);
 
-                Notes.Text += "Notepad closed, continuation!";
+                    Task.Factory.StartNew(() =>
+                    {
+                        Thread.Sleep(1000);
+                        Debug.WriteLine("Completing 2");
+                    }, TaskCreationOptions.AttachedToParent);
+
+                    Task.Factory.StartNew(() =>
+                    {
+                        Thread.Sleep(1000);
+                        Debug.WriteLine("Completing 3");
+                    }, TaskCreationOptions.AttachedToParent);
+                });
+                Debug.WriteLine("Completed");
             }
             catch (Exception exception)
             {
