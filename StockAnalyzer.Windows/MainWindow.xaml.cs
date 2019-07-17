@@ -56,7 +56,9 @@ namespace StockAnalyzer.Windows
 
             try
             {
-                Stocks.ItemsSource = await GetStocksFor(Ticker.Text);
+                await WorkInNotepad();
+
+                Notes.Text += "Notepad closed, continuation!";
             }
             catch (Exception exception)
             {
