@@ -79,37 +79,23 @@ namespace StockAnalyzer.Windows
 
                 #endregion
 
-                var loadedStocks = (await Task.WhenAll(tickerLoadingTasks)).SelectMany(stock => stock);
+                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
+                var values = new List<StockCalculation>();
 
-                // The parallel execution using parallel extensions will block the calling thread until the parallel execution completes
-                Parallel.Invoke(new ParallelOptions() { MaxDegreeOfParallelism = 2 },
-                    () =>
-                    {
-                        Debug.WriteLine("Starting Operation 1");
-                        CalculateExpensiveComputation(loadedStocks);
-                        Debug.WriteLine("Completed Operation 1");
-                    },
-                    () =>
-                    {
-                        Debug.WriteLine("Starting Operation 2");
-                        CalculateExpensiveComputation(loadedStocks);
-                        Debug.WriteLine("Completed Operation 2");
-                    },
-                    () =>
-                    {
-                        Debug.WriteLine("Starting Operation 3");
-                        CalculateExpensiveComputation(loadedStocks);
-                        Debug.WriteLine("Completed Operation 3");
-                    },
-                    () =>
-                    {
-                        Debug.WriteLine("Starting Operation 4");
-                        CalculateExpensiveComputation(loadedStocks);
-                        Debug.WriteLine("Completed Operation 4");
-                    }
-                    );
+                foreach (var stock in loadedStocks)
+                {
+                    var result = CalculateExpensiveComputation(stock);
 
-                Stocks.ItemsSource = loadedStocks;
+                    var data = new StockCalculation()
+                    {
+                        Ticker = stocks.First().Ticker,
+                        Result = result
+                    };
+
+                    values.Add(data);
+                }
+
+                Stocks.ItemsSource = values.ToArray();
             }
             catch (Exception exception)
             {
@@ -213,6 +199,11 @@ namespace StockAnalyzer.Windows
         {
             Application.Current.Shutdown();
         }
+    }
 
+    class StockCalculation
+    {
+        public string Ticker { get; set; }
+        public decimal Result { get; set; }
     }
 }
