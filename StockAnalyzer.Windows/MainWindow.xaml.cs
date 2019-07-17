@@ -56,28 +56,16 @@ namespace StockAnalyzer.Windows
 
             try
             {
-                Debug.WriteLine("Starting");
-                await Task.Factory.StartNew(() =>
+                var service = new StockService();
+                var operation = Task.Factory.StartNew(async (obj) =>
                 {
-                    Task.Factory.StartNew(() =>
-                    {
-                        Thread.Sleep(1000);
-                        Debug.WriteLine("Completing 1");
-                    }, TaskCreationOptions.AttachedToParent);
+                    var stockService = obj as StockService;
+                    var prices = await service.GetStockPricesFor("MSFT", CancellationToken.None);
 
-                    Task.Factory.StartNew(() =>
-                    {
-                        Thread.Sleep(1000);
-                        Debug.WriteLine("Completing 2");
-                    }, TaskCreationOptions.AttachedToParent);
+                    return prices.Take(5);
+                }, service).Unwrap();
 
-                    Task.Factory.StartNew(() =>
-                    {
-                        Thread.Sleep(1000);
-                        Debug.WriteLine("Completing 3");
-                    }, TaskCreationOptions.AttachedToParent);
-                });
-                Debug.WriteLine("Completed");
+                var result = await operation;
             }
             catch (Exception exception)
             {
