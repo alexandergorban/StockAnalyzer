@@ -60,7 +60,14 @@ namespace StockAnalyzer.Windows
                 StockProgress.Value = 0;
                 StockProgress.Maximum = Ticker.Text.Split(',', ' ').Count();
 
-                await LoadStocks();
+                var progress = new Progress<IEnumerable<StockPrice>>();
+                progress.ProgressChanged += (_, stocks) =>
+                {
+                    StockProgress.Value += 1;
+                    Notes.Text += $"Loaded {stocks.Count()} for {stocks.First().Ticker} {Environment.NewLine}";
+                };
+
+                await LoadStocks(progress);
             }
             catch (Exception exception)
             {
@@ -79,16 +86,21 @@ namespace StockAnalyzer.Windows
             #endregion
         }
 
-        private async Task LoadStocks()
+        private async Task LoadStocks(IProgress<IEnumerable<StockPrice>> progress = null)
         {
             var tickers = Ticker.Text.Split(',', ' ');
-
             var service = new StockService();
-
             var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
+
             foreach (var ticker in tickers)
             {
                 var loadTask = service.GetStockPricesFor(ticker, _cancellationTokenSource.Token);
+
+                loadTask = loadTask.ContinueWith(stockTask =>
+                {
+                    progress?.Report(stockTask.Result);
+                    return stockTask.Result;
+                });
 
                 tickerLoadingTasks.Add(loadTask);
             }
