@@ -91,9 +91,14 @@ namespace StockAnalyzer.Windows
 
                         if (ticker == "MSFT")
                         {
-                            Debug.WriteLine($"Found {ticker}, breaking");
-                            state.Break();
+                            Debug.WriteLine($"Found {ticker}, stopping");
+                            state.Stop();
 
+                            return;
+                        }
+
+                        if (state.IsStopped)
+                        {
                             return;
                         }
 
