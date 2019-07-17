@@ -81,13 +81,18 @@ namespace StockAnalyzer.Windows
 
                 #endregion
 
-                var loadedStocks = (await Task.WhenAll(tickerLoadingTasks)).SelectMany(stock => stock).ToArray();
+                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
 
                 decimal total = 0;
 
-                Parallel.For(0, loadedStocks.Length, i =>
+                Parallel.ForEach(loadedStocks, stocks =>
                 {
-                    var value = Compute(loadedStocks[i]);
+                    var value = 0m;
+
+                    foreach (var stock in stocks)
+                    {
+                        value += Compute(stock);
+                    }
 
                     lock (syncRoot)
                     {
