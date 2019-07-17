@@ -56,18 +56,7 @@ namespace StockAnalyzer.Windows
 
             try
             {
-                StockProgress.IsIndeterminate = false;
-                StockProgress.Value = 0;
-                StockProgress.Maximum = Ticker.Text.Split(',', ' ').Count();
-
-                var progress = new Progress<IEnumerable<StockPrice>>();
-                progress.ProgressChanged += (_, stocks) =>
-                {
-                    StockProgress.Value += 1;
-                    Notes.Text += $"Loaded {stocks.Count()} for {stocks.First().Ticker} {Environment.NewLine}";
-                };
-
-                await LoadStocks(progress);
+                Stocks.ItemsSource = await GetStocksFor(Ticker.Text);
             }
             catch (Exception exception)
             {
@@ -151,13 +140,62 @@ namespace StockAnalyzer.Windows
             return computedValue;
         }
 
-        public async Task<IEnumerable<StockPrice>> GetStockFor(string ticker)
+        public Task<IEnumerable<StockPrice>> GetStocksFor(string ticker)
         {
-            var service = new StockService();
-            var stocks = await service.GetStockPricesFor(ticker, CancellationToken.None)
-                .ConfigureAwait(false);
+            var source = new TaskCompletionSource<IEnumerable<StockPrice>>();
 
-            return stocks.Take(5);
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    var prices = new List<StockPrice>();
+                    var lines = File.ReadAllLines(@"D:\dev\StockAnalyzer\StockData\StockPrices_Small.csv");
+
+                    foreach (var line in lines.Skip(1))
+                    {
+                        var segments = line.Split(',');
+
+                        for (var i = 0; i < segments.Length; i++) segments[i] = segments[i].Trim('\'', '"');
+                        var price = new StockPrice
+                        {
+                            Ticker = segments[0],
+                            TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
+                            Volume = Convert.ToInt32(segments[6]),
+                            Change = Convert.ToDecimal(segments[7]),
+                            ChangePercent = Convert.ToDecimal(segments[8]),
+                        };
+                        prices.Add(price);
+                    }
+
+                    source.SetResult(prices.Where(price => price.Ticker == ticker));
+                }
+                catch (Exception ex)
+                {
+                    source.SetException(ex);
+                }
+            });
+
+            return source.Task;
+        }
+
+        public Task WorkInNotepad()
+        {
+            var source = new TaskCompletionSource<object>();
+
+            var process = new Process()
+            {
+                EnableRaisingEvents = true,
+                StartInfo = new ProcessStartInfo("Notepad.exe")
+                {
+                    RedirectStandardError = true,
+                    UseShellExecute = false
+                }
+            };
+
+            process.Exited += (sender, e) => { source.SetResult(null); };
+            process.Start();
+
+            return source.Task;
         }
 
         private Task<List<string>> SearchForStocks(CancellationToken cancellationToken)
