@@ -56,16 +56,53 @@ namespace StockAnalyzer.Windows
 
             try
             {
+                #region Load One or Many Tickers
+
+                var tickers = Ticker.Text.Split(',', ' ');
+
                 var service = new StockService();
-                var operation = Task.Factory.StartNew(async (obj) =>
+
+                // List<T> is not thread safe consider using ConcurrentBag<T> instead
+                var stockPrices = new ConcurrentBag<StockPrice>();
+
+                var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
+
+                foreach (var ticker in tickers)
                 {
-                    var stockService = obj as StockService;
-                    var prices = await service.GetStockPricesFor("MSFT", CancellationToken.None);
+                    var loadTask = service.GetStockPricesFor(ticker, _cancellationTokenSource.Token)
+                        .ContinueWith(t =>
+                        {
+                            foreach (var stock in t.Result.Take(5))
+                            {
+                                stockPrices.Add(stock);
+                            }
 
-                    return prices.Take(5);
-                }, service).Unwrap();
+                            return t.Result;
+                        });
 
-                var result = await operation;
+                    tickerLoadingTasks.Add(loadTask);
+                }
+
+                #endregion
+
+                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
+                var values = new ConcurrentBag<StockCalculation>();
+
+                Parallel.ForEach(loadedStocks, (stocks) =>
+                {
+                    var result = CalculateExpensiveComputation(stocks);
+
+                    var data = new StockCalculation()
+                    {
+                        Ticker = stocks.First().Ticker,
+                        Result = result
+                    };
+
+                    values.Add(data);
+                });
+
+
+                Stocks.ItemsSource = values.ToArray();
             }
             catch (Exception exception)
             {
