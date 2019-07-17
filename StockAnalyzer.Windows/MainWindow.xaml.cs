@@ -25,6 +25,8 @@ namespace StockAnalyzer.Windows
             InitializeComponent();
         }
 
+        static object syncRoot = new object();
+
         private CancellationTokenSource _cancellationTokenSource = null;
 
         private async void Search_Click(object sender, RoutedEventArgs e)
@@ -81,12 +83,17 @@ namespace StockAnalyzer.Windows
 
                 var loadedStocks = (await Task.WhenAll(tickerLoadingTasks)).SelectMany(stock => stock).ToArray();
 
-                int total = 0;
+                decimal total = 0;
 
                 Parallel.For(0, loadedStocks.Length, i =>
+                {
+                    var value = Compute(loadedStocks[i]);
+
+                    lock (syncRoot)
                     {
-                        Interlocked.Add(ref total, (int) Compute(loadedStocks[i]));
-                    });
+                        total += value;
+                    }
+                });
 
                 Notes.Text = total.ToString();
             }
