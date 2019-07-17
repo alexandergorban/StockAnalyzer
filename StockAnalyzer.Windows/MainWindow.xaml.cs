@@ -82,19 +82,32 @@ namespace StockAnalyzer.Windows
                 var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
                 var values = new ConcurrentBag<StockCalculation>();
 
-                Parallel.ForEach(loadedStocks, (stocks) => 
-                {
-                    var result = CalculateExpensiveComputation(stocks);
-
-                    var data = new StockCalculation()
+                var executionResult = Parallel.ForEach(loadedStocks,
+                    new ParallelOptions() { MaxDegreeOfParallelism = 2 },
+                    (stocks, state) =>
                     {
-                        Ticker = stocks.First().Ticker,
-                        Result = result
-                    };
+                        var ticker = stocks.First().Ticker;
+                        Debug.WriteLine($"Start processing {ticker}");
 
-                    values.Add(data);
-                });
-                
+                        if (ticker == "MSFT")
+                        {
+                            Debug.WriteLine($"Found {ticker}, breaking");
+                            state.Break();
+
+                            return;
+                        }
+
+                        var result = CalculateExpensiveComputation(stocks);
+
+                        var data = new StockCalculation()
+                        {
+                            Ticker = stocks.First().Ticker,
+                            Result = result
+                        };
+
+                        values.Add(data);
+                    });
+
 
                 Stocks.ItemsSource = values.ToArray();
             }
