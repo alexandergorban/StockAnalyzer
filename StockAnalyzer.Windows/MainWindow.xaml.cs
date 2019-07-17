@@ -79,42 +79,16 @@ namespace StockAnalyzer.Windows
 
                 #endregion
 
-                var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
-                var values = new ConcurrentBag<StockCalculation>();
+                var loadedStocks = (await Task.WhenAll(tickerLoadingTasks)).SelectMany(stock => stock).ToArray();
 
-                var executionResult = Parallel.ForEach(loadedStocks,
-                    new ParallelOptions() { MaxDegreeOfParallelism = 2 },
-                    (stocks, state) =>
+                int total = 0;
+
+                Parallel.For(0, loadedStocks.Length, i =>
                     {
-                        var ticker = stocks.First().Ticker;
-                        Debug.WriteLine($"Start processing {ticker}");
-
-                        if (ticker == "MSFT")
-                        {
-                            Debug.WriteLine($"Found {ticker}, stopping");
-                            state.Stop();
-
-                            return;
-                        }
-
-                        if (state.IsStopped)
-                        {
-                            return;
-                        }
-
-                        var result = CalculateExpensiveComputation(stocks);
-
-                        var data = new StockCalculation()
-                        {
-                            Ticker = stocks.First().Ticker,
-                            Result = result
-                        };
-
-                        values.Add(data);
+                        Interlocked.Add(ref total, (int) Compute(loadedStocks[i]));
                     });
 
-
-                Stocks.ItemsSource = values.ToArray();
+                Notes.Text = total.ToString();
             }
             catch (Exception exception)
             {
@@ -131,6 +105,22 @@ namespace StockAnalyzer.Windows
             StockProgress.Visibility = Visibility.Hidden;
 
             #endregion
+        }
+
+        private decimal Compute(StockPrice stock)
+        {
+            Thread.Yield();
+
+            decimal x = 0;
+            for (var a = 0; a < 10; a++)
+            {
+                for (var b = 0; b < 20; b++)
+                {
+                    x += a + stock.Change;
+                }
+            }
+
+            return x;
         }
 
         Random random = new Random();
