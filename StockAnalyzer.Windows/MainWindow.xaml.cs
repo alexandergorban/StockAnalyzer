@@ -63,7 +63,7 @@ namespace StockAnalyzer.Windows
                 var service = new StockService();
 
                 // List<T> is not thread safe consider using ConcurrentBag<T> instead
-                var stockPrices = new ConcurrentBag<StockPrice>();
+                var stocks = new ConcurrentBag<StockPrice>();
 
                 var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
 
@@ -74,7 +74,7 @@ namespace StockAnalyzer.Windows
                         {
                             foreach (var stock in t.Result.Take(5))
                             {
-                                stockPrices.Add(stock);
+                                stocks.Add(stock);
                             }
 
                             return t.Result;
@@ -86,23 +86,8 @@ namespace StockAnalyzer.Windows
                 #endregion
 
                 var loadedStocks = await Task.WhenAll(tickerLoadingTasks);
-                var values = new ConcurrentBag<StockCalculation>();
 
-                Parallel.ForEach(loadedStocks, (stocks) =>
-                {
-                    var result = CalculateExpensiveComputation(stocks);
-
-                    var data = new StockCalculation()
-                    {
-                        Ticker = stocks.First().Ticker,
-                        Result = result
-                    };
-
-                    values.Add(data);
-                });
-
-
-                Stocks.ItemsSource = values.ToArray();
+                Stocks.ItemsSource = loadedStocks.SelectMany(stock => stock);
             }
             catch (Exception exception)
             {
